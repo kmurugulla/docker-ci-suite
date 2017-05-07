@@ -1,0 +1,62 @@
+version: '3'
+
+services:
+  jenkins:
+    build: ./jenkins/
+    entrypoint: /bin/tini -- /usr/local/bin/jenkins.sh --prefix=/jenkins/
+    container_name: jenkins
+    ports:
+      - "10001:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+  
+  nexus:
+   image: sonatype/nexus
+   container_name: nexus
+   environment:
+      - CONTEXT_PATH=/nexus
+   ports:
+      - "10002:8081"
+   volumes:
+      - nexus:/var/lib/nexus
+  
+  postgresql:
+    image: orchardup/postgresql:latest
+    container_name: postgresql
+    environment:
+      - POSTGRESQL_USER=sonar
+      - POSTGRESQL_PASS=xaexohquaetiesoo
+      - POSTGRESQL_DB=sonar
+    volumes:
+      - sonarqube/:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+  
+  sonarqube:
+   build: ./sonarqube/
+   container_name: sonarqube
+   links:
+     - postgresql:db
+   environment:
+     - DB_USER=sonar
+     - DB_PASS=xaexohquaetiesoo
+     - DB_NAME=sonar
+   ports:
+     - "10003:9000"
+     - "443"
+
+  proxy:
+    build: ./nginx/
+    container_name: proxy
+    ports:
+      - "8080:80"
+    links:
+      - nexus
+      - sonarqube
+      - jenkins
+
+volumes:
+  jenkins_home:
+  nexus:
+  sonarqube:
